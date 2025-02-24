@@ -1,9 +1,17 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { axiosInstance } from '../lib/axios';
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  profilePicture?: string;
+  lastLogin?: Date;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: any | null;
+  user: User | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
 }
@@ -12,41 +20,67 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<any | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      fetchUser();
-    }
-  }, []);
+    const initializeAuth = async () => {
+      const token = localStorage.getItem('token');
+      const storedUser = localStorage.getItem('user');
 
-  const fetchUser = async () => {
-    try {
-      const response = await axiosInstance.get('/admin/profile');
-      setUser(response.data);
-      setIsAuthenticated(true);
-    } catch (error) {
-      localStorage.removeItem('token');
-      setIsAuthenticated(false);
-      setUser(null);
-    }
-  };
+      if (token && storedUser) {
+        try {
+          // Set the token in axios headers
+          axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+          
+          // Verify token by fetching user profile
+          const response = await axiosInstance.get('/admin/profile');
+          setUser(response.data);
+          setIsAuthenticated(true);
+        } catch (error) {
+          // If token is invalid, clear storage
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          axiosInstance.defaults.headers.common['Authorization'] = '';
+        }
+      }
+      setIsLoading(false);
+    };
+
+    initializeAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
     const response = await axiosInstance.post('/auth/admin/login', {
       email,
       password,
     });
-    localStorage.setItem('token', response.data.token);
-    await fetchUser();
+    
+    const { token, user: userData } = response.data;
+    
+    // Store token and user data
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    
+    // Set axios default header
+    axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+    
+    setUser(userData);
+    setIsAuthenticated(true);
   };
 
   const logout = () => {
     localStorage.removeItem('token');
-    setIsAuthenticated(false);
+    localStorage.removeItem('user');
+    axiosInstance.defaults.headers.common['Authorization'] = '';
     setUser(null);
+    setIsAuthenticated(false);
   };
+
+  if (isLoading) {
+    // You might want to show a loading spinner here
+    return null;
+  }
 
   return (
     <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
