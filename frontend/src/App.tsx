@@ -5,10 +5,12 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { theme } from './theme';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 // Create placeholder components until we implement them
-const Login = () => <div>Login Page</div>;
-const Register = () => <div>Register Page</div>;
 const Dashboard = () => <div>Dashboard Page</div>;
 
 const queryClient = new QueryClient();
@@ -23,6 +25,8 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route
                 path="/dashboard"
                 element={
