@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import connectDB from './config/database.js';
 import authRoutes from './routes/auth.routes.js';
 import adminRoutes from './routes/admin.routes.js';
+import studentRoutes from './routes/student.routes.js';
 
 dotenv.config();
 
@@ -24,6 +25,7 @@ connectDB();
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/students', studentRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
