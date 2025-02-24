@@ -36,7 +36,8 @@ const adminSchema = new Schema<IAdmin>({
     minlength: [6, 'Password must be at least 6 characters']
   },
   profilePicture: {
-    type: Buffer
+    type: Buffer,
+    select: false
   },
   lastLogin: {
     type: Date,

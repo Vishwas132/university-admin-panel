@@ -1,12 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
-
-export interface AuthRequest extends Request {
-  admin?: any;
-}
+import { verifyToken } from '../utils/jwt.js';
 
 export const protect = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ) => {
@@ -14,7 +10,8 @@ export const protect = async (
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ message: 'Not authorized' });
+      res.status(401).json({ message: 'Not authorized' });
+      return;
     }
 
     const token = authHeader.split(' ')[1];

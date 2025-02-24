@@ -1,9 +1,9 @@
 import { Request, Response } from 'express';
-import Admin, { IAdmin } from '../models/Admin';
-import { generateToken } from '../utils/jwt';
-import { sendPasswordResetEmail } from '../utils/email';
+import Admin, { IAdmin } from '../models/Admin.js';
+import { generateToken } from '../utils/jwt.js';
+import { sendPasswordResetEmail } from '../utils/email.js';
 import crypto from 'crypto';
-import { ForgotPasswordInput, ResetPasswordInput, RegisterInput, LoginInput } from '../schemas/auth.schema';
+import { ForgotPasswordInput, ResetPasswordInput, RegisterInput, LoginInput } from '../schemas/auth.schema.js';
 
 export const register = async (req: Request<{}, {}, RegisterInput>, res: Response) => {
   try {
@@ -12,7 +12,8 @@ export const register = async (req: Request<{}, {}, RegisterInput>, res: Respons
     // Check if admin already exists
     const adminExists = await Admin.findOne({ email });
     if (adminExists) {
-      return res.status(400).json({ message: 'Admin already exists' });
+      res.status(400).json({ message: 'Admin already exists' });
+      return;
     }
 
     // Create new admin
@@ -42,13 +43,15 @@ export const login = async (req: Request<{}, {}, LoginInput>, res: Response) => 
     // Find admin
     const admin = await Admin.findOne({ email });
     if (!admin) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
     }
 
     // Verify password
     const isMatch = await admin.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
     }
 
     // Update last login
@@ -74,7 +77,8 @@ export const forgotPassword = async (req: Request<{}, {}, ForgotPasswordInput>, 
 
     const admin = await Admin.findOne({ email });
     if (!admin) {
-      return res.status(404).json({ message: 'Admin not found' });
+      res.status(404).json({ message: 'Admin not found' });
+      return;
     }
 
     // Generate reset token
@@ -109,9 +113,10 @@ export const resetPassword = async (req: Request<{}, {}, ResetPasswordInput>, re
     });
 
     if (!admin) {
-      return res.status(400).json({ 
+      res.status(400).json({ 
         message: 'Invalid or expired reset token' 
       });
+      return;
     }
 
     // Update password and clear reset token fields

@@ -12,14 +12,15 @@ export const validate = (schema: AnyZodObject) =>
       next();
     } catch (error: unknown) {
       if (error instanceof ZodError) {
-        return res.status(400).json({
+        res.status(400).json({
           message: 'Validation error',
           errors: (error as ZodError).errors.map((e) => ({
             field: e.path.join('.'),
             message: e.message
           }))
         });
+        return;
       }
-      return res.status(500).json({ message: 'Internal server error' });
+      res.status(500).json({ message: 'Internal server error' });
     }
   }; 
