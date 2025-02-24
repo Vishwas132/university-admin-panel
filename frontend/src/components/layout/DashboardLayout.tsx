@@ -4,8 +4,6 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
-const DRAWER_WIDTH = 240;
-
 export default function DashboardLayout() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
