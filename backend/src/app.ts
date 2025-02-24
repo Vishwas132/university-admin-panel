@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import connectDB from './config/database';
+import authRoutes from './routes/auth.routes';
 
 dotenv.config();
 
@@ -18,6 +19,9 @@ app.use(express.urlencoded({ extended: true }));
 
 // Connect to Database
 connectDB();
+
+// Routes
+app.use('/api/auth', authRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
