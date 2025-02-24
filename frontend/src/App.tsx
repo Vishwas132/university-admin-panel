@@ -12,9 +12,7 @@ import ResetPassword from './pages/ResetPassword';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
-
-// Create placeholder components until we implement them
-const Students = () => <div>Students Management</div>;
+import Students from './pages/Students';
 
 const queryClient = new QueryClient();
 
