@@ -18,23 +18,20 @@ export default function DashboardLayout() {
   }, [isMobile]);
 
   return (
-    <Box sx={{ display: 'flex', width: '100%' }}>
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          minHeight: '100vh',
           display: 'flex',
           flexDirection: 'column',
-          transition: theme.transitions.create('margin', {
-            easing: theme.transitions.easing.sharp,
-            duration: theme.transitions.duration.enteringScreen,
-          }),
+          height: '100vh',
+          overflow: 'hidden',
         }}
       >
         <Header onMenuClick={toggleSidebar} isSidebarOpen={sidebarOpen} />
-        <Box sx={{ p: 3, flex: 1 }}>
+        <Box sx={{ p: 3, flex: 1, overflowY: 'auto' }}>
           <Outlet />
         </Box>
       </Box>

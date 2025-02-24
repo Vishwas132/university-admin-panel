@@ -60,10 +60,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       onClose={onClose}
       ModalProps={{ keepMounted: true }}
       sx={{
-        position: 'relative',
-        flexShrink: 0,
         '& .MuiDrawer-paper': {
-          position: 'relative',
           width: open ? DRAWER_WIDTH : theme.spacing(7),
           boxSizing: 'border-box',
           border: 'none',
@@ -72,6 +69,10 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           transition: theme.transitions.create('width', {
             easing: theme.transitions.easing.sharp,
             duration: theme.transitions.duration.enteringScreen,
+          }),
+          ...(isMobile ? {} : {
+            position: 'relative',
+            height: '100%',
           }),
         },
       }}
