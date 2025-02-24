@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { IAdmin } from '../models/Admin';
+import { IAdmin } from '../models/Admin.js';
 
 export const generateToken = (admin: IAdmin): string => {
   return jwt.sign(

@@ -4,14 +4,14 @@ import {
   login,
   forgotPassword,
   resetPassword
-} from '../controllers/auth.controller';
-import { validate } from '../middleware/validate';
+} from '../controllers/auth.controller.js';
+import { validate } from '../middleware/validate.js';
 import { 
   registerSchema,
   loginSchema,
   forgotPasswordSchema, 
   resetPasswordSchema 
-} from '../schemas/auth.schema';
+} from '../schemas/auth.schema.js';
 
 const router = express.Router();
 
