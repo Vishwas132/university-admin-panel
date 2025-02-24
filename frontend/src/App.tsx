@@ -9,9 +9,12 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import DashboardLayout from './components/layout/DashboardLayout';
 
 // Create placeholder components until we implement them
-const Dashboard = () => <div>Dashboard Page</div>;
+const Dashboard = () => <div>Dashboard Overview</div>;
+const Students = () => <div>Students Management</div>;
+const Profile = () => <div>Admin Profile</div>;
 
 const queryClient = new QueryClient();
 
@@ -31,10 +34,14 @@ function App() {
                 path="/dashboard"
                 element={
                   <ProtectedRoute>
-                    <Dashboard />
+                    <DashboardLayout />
                   </ProtectedRoute>
                 }
-              />
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="students" element={<Students />} />
+                <Route path="profile" element={<Profile />} />
+              </Route>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Router>
