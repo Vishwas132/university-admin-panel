@@ -10,9 +10,9 @@ export const getProfile = async (
   next: NextFunction
 ) => {
   try {
-    logger.info('Fetching admin profile', { adminId: req.admin.id });
+    logger.info('Fetching admin profile', { adminId: req.user.id });
 
-    const admin = await Admin.findById(req.admin.id).select('-password');
+    const admin = await Admin.findById(req.user.id).select('-password');
     if (!admin) {
       throw new NotFoundError('Admin not found');
     }
@@ -30,9 +30,9 @@ export const updateProfile = async (
   next: NextFunction
 ) => {
   try {
-    logger.info('Processing admin profile update', { adminId: req.admin.id });
+    logger.info('Processing admin profile update', { adminId: req.user.id });
 
-    const admin = await Admin.findById(req.admin.id);
+    const admin = await Admin.findById(req.user.id);
     if (!admin) {
       throw new NotFoundError('Admin not found');
     }
@@ -71,9 +71,9 @@ export const changePassword = async (
   next: NextFunction
 ) => {
   try {
-    logger.info('Processing admin password change', { adminId: req.admin.id });
+    logger.info('Processing admin password change', { adminId: req.user.id });
 
-    const admin = await Admin.findById(req.admin.id);
+    const admin = await Admin.findById(req.user.id);
     if (!admin) {
       throw new NotFoundError('Admin not found');
     }
@@ -103,13 +103,13 @@ export const uploadProfilePicture = async (
   next: NextFunction
 ) => {
   try {
-    logger.info('Processing admin profile picture upload', { adminId: req.admin.id });
+    logger.info('Processing admin profile picture upload', { adminId: req.user.id });
 
     if (!req.file) {
       throw new ValidationError('No file uploaded');
     }
 
-    const admin = await Admin.findById(req.admin.id);
+    const admin = await Admin.findById(req.user.id);
     if (!admin) {
       throw new NotFoundError('Admin not found');
     }
@@ -142,9 +142,9 @@ export const getProfilePicture = async (
   next: NextFunction
 ) => {
   try {
-    logger.info('Fetching admin profile picture', { adminId: req.admin.id });
+    logger.info('Fetching admin profile picture', { adminId: req.user.id });
 
-    const admin = await Admin.findById(req.admin.id);
+    const admin = await Admin.findById(req.user.id);
     if (!admin || !admin.profilePicture) {
       throw new NotFoundError('Profile picture not found');
     }

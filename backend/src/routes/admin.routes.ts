@@ -6,7 +6,7 @@ import {
   uploadProfilePicture,
   getProfilePicture
 } from '../controllers/admin.controller.js';
-import { protect } from '../middleware/auth.js';
+import { protect, adminOnly } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { upload } from '../middleware/upload.js';
 import {
@@ -16,8 +16,9 @@ import {
 
 const router = express.Router();
 
-// All routes are protected
+// All routes are protected and admin-only
 router.use(protect);
+router.use(adminOnly);
 
 router.get('/profile', getProfile);
 router.put(

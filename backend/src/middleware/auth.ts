@@ -1,19 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt.js';
 
-// Extend the Request type to include user information
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        id: string;
-        email: string;
-        role: 'admin' | 'student';
-      };
-    }
-  }
-}
-
 export const protect = async (
   req: Request,
   res: Response,
