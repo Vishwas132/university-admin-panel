@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { axiosInstance } from '../lib/axios';
+import axios from 'axios';
 
 interface User {
   _id: string;
@@ -75,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     axiosInstance.defaults.headers.common['Authorization'] = '';
     setUser(null);
     setIsAuthenticated(false);
+    delete axios.defaults.headers.common['Authorization'];
   };
 
   if (isLoading) {

@@ -23,7 +23,7 @@ interface DashboardStats {
   activeStudents: number;
 }
 
-export default function Dashboard() {
+const Dashboard = () => {
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ['dashboardStats'],
     queryFn: async () => {
@@ -119,4 +119,6 @@ export default function Dashboard() {
       </Grid>
     </Box>
   );
-} 
+};
+
+export default Dashboard; 

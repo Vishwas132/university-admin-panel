@@ -3,13 +3,19 @@ import {
   AppBar,
   Avatar,
   Box,
+  Button,
   IconButton,
   Menu,
   MenuItem,
   Toolbar,
   Typography,
 } from '@mui/material';
-import { Menu as MenuIcon, ChevronRight as ChevronRightIcon, AccountCircle } from '@mui/icons-material';
+import { 
+  Menu as MenuIcon, 
+  ChevronRight as ChevronRightIcon, 
+  AccountCircle,
+  Logout as LogoutIcon
+} from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -57,6 +63,15 @@ export default function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
         <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'text.primary' }}>
           College Admin Panel
         </Typography>
+
+        <Button
+          color="primary"
+          onClick={handleLogout}
+          startIcon={<LogoutIcon />}
+          sx={{ mr: 2 }}
+        >
+          Logout
+        </Button>
 
         <Box>
           <IconButton
