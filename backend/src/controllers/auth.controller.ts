@@ -92,23 +92,51 @@ export const forgotPassword = async (
     const { email } = req.body;
     logger.info('Processing forgot password request', { email });
 
+    // First check if it's an admin account
     const admin = await Admin.findOne({ email });
-    if (!admin) {
-      throw new NotFoundError('Admin not found');
+    
+    // If not an admin, check if it's a student account
+    const student = !admin ? await Student.findOne({ email }) : null;
+    
+    // If neither admin nor student exists with this email
+    if (!admin && !student) {
+      throw new NotFoundError('No account found with this email');
     }
 
-    // Generate reset token
-    const resetToken = await admin.generateResetToken();
+    // Determine the user type and generate reset token
+    const userType = admin ? 'admin' : 'student';
+    const user = admin || student;
     
-    // Send reset email
-    await sendPasswordResetEmail(email, resetToken);
-    logger.info('Password reset email sent', { adminId: admin._id });
+    // TypeScript null check (though our logic prevents this)
+    if (!user) {
+      throw new NotFoundError('No account found with this email');
+    }
+    
+    const resetToken = await user.generateResetToken();
+    
+    // Send reset email or bypass in test mode
+    const { sent, resetUrl } = await sendPasswordResetEmail(email, resetToken);
+    logger.info(
+      sent ? 'Password reset email sent' : 'Password reset email bypassed (test mode)', 
+      { userId: user._id, userType }
+    );
 
-    res.json({ 
-      message: 'Password reset instructions sent to email',
-      // Don't send the token in production
-      debug: process.env.NODE_ENV === 'development' ? resetToken : undefined
-    });
+    // Determine what to return based on whether email was sent
+    if (sent) {
+      res.json({ 
+        message: 'Password reset instructions sent to email',
+        // Don't send the token in production unless in development mode
+        debug: process.env.NODE_ENV === 'development' ? resetToken : undefined
+      });
+    } else {
+      // In test mode, return the token and reset URL directly
+      res.json({
+        message: 'Test mode: Password reset email would have been sent',
+        resetToken,
+        resetUrl,
+        userType
+      });
+    }
   } catch (error) {
     next(error);
   }
@@ -129,22 +157,39 @@ export const resetPassword = async (
       .update(token)
       .digest('hex');
 
+    // Check if token matches an admin account
     const admin = await Admin.findOne({
       resetPasswordToken,
       resetPasswordExpires: { $gt: Date.now() }
     });
 
-    if (!admin) {
+    // If not an admin, check if token matches a student account
+    const student = !admin ? await Student.findOne({
+      resetPasswordToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    }) : null;
+
+    // If neither admin nor student found with this token
+    if (!admin && !student) {
+      throw new AuthenticationError('Invalid or expired reset token');
+    }
+
+    // Determine user type and update password
+    const userType = admin ? 'admin' : 'student';
+    const user = admin || student;
+    
+    // TypeScript null check (though our logic prevents this)
+    if (!user) {
       throw new AuthenticationError('Invalid or expired reset token');
     }
 
     // Update password and clear reset token fields
-    admin.password = password;
-    admin.resetPasswordToken = undefined;
-    admin.resetPasswordExpires = undefined;
-    await admin.save();
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
 
-    logger.info('Password reset successful', { adminId: admin._id });
+    logger.info('Password reset successful', { userId: user._id, userType });
     res.json({ message: 'Password reset successful' });
   } catch (error) {
     next(error);
@@ -185,4 +230,4 @@ export const studentLogin = async (
   } catch (error) {
     next(error);
   }
-}; 
+};

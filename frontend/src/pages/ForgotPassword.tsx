@@ -14,8 +14,11 @@ import {
   Alert,
   AlertTitle,
   CircularProgress,
+  Card,
+  CardContent,
+  Divider,
 } from '@mui/material';
-import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
+import { CheckCircle, Error as ErrorIcon, Info as InfoIcon } from '@mui/icons-material';
 import { axiosInstance } from '../lib/axios';
 import { getErrorMessage } from '../lib/utils';
 
@@ -25,10 +28,16 @@ const forgotPasswordSchema = z.object({
 
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
 
+interface TestModeData {
+  resetToken: string;
+  resetUrl: string;
+}
+
 export default function ForgotPassword() {
   const [error, setError] = React.useState('');
   const [success, setSuccess] = React.useState('');
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [testModeData, setTestModeData] = React.useState<TestModeData | null>(null);
 
   const {
     register,
@@ -42,11 +51,23 @@ export default function ForgotPassword() {
     try {
       setError('');
       setSuccess('');
+      setTestModeData(null);
       setIsSubmitting(true);
-      await axiosInstance.post('/auth/forgot-password', {
+      
+      const response = await axiosInstance.post('/auth/forgot-password', {
         email: data.email,
       });
-      setSuccess('Password reset instructions have been sent to your email. Please check your inbox and follow the instructions to reset your password. The link will expire in 1 hour.');
+      
+      // Check if we're in test mode and received a token directly
+      if (response.data.resetToken && response.data.resetUrl) {
+        setTestModeData({
+          resetToken: response.data.resetToken,
+          resetUrl: response.data.resetUrl
+        });
+        setSuccess('Test mode: Password reset token generated successfully. You can use the link below to reset your password.');
+      } else {
+        setSuccess('Password reset instructions have been sent to your email. Please check your inbox and follow the instructions to reset your password. The link will expire in 1 hour.');
+      }
     } catch (err) {
       const errorMsg = getErrorMessage(err);
       if (errorMsg.includes('not found') || errorMsg.includes('no user')) {
@@ -120,6 +141,33 @@ export default function ForgotPassword() {
             </Alert>
           )}
 
+          {testModeData && (
+            <Card sx={{ mb: 3, width: '100%', bgcolor: '#f5f5f5' }}>
+              <CardContent>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                  <InfoIcon color="info" sx={{ mr: 1 }} />
+                  <Typography variant="subtitle1" fontWeight="bold">
+                    Test Mode Information
+                  </Typography>
+                </Box>
+                <Divider sx={{ mb: 2 }} />
+                <Typography variant="body2" sx={{ mb: 1 }}>
+                  <strong>Reset Token:</strong> {testModeData.resetToken}
+                </Typography>
+                <Button
+                  component={RouterLink}
+                  to={`/reset-password?token=${testModeData.resetToken}`}
+                  variant="outlined"
+                  color="primary"
+                  fullWidth
+                  sx={{ mt: 1 }}
+                >
+                  Go to Reset Password Page
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <Box 
             component="form" 
             noValidate
@@ -158,4 +206,4 @@ export default function ForgotPassword() {
       </Box>
     </Container>
   );
-} 
+}

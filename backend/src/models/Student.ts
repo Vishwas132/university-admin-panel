@@ -1,5 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export interface IStudent extends Document {
   name: string;
@@ -9,9 +10,12 @@ export interface IStudent extends Document {
   gender: 'male' | 'female' | 'other';
   password: string;
   profileImage?: Buffer;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
+  generateResetToken(): Promise<string>;
 }
 
 const studentSchema = new Schema<IStudent>({
@@ -53,7 +57,9 @@ const studentSchema = new Schema<IStudent>({
   profileImage: {
     type: Buffer,
     select: false
-  }
+  },
+  resetPasswordToken: String,
+  resetPasswordExpires: Date
 }, {
   timestamps: true
 });
@@ -76,8 +82,23 @@ studentSchema.methods.comparePassword = async function(candidatePassword: string
   return bcrypt.compare(candidatePassword, this.password);
 };
 
+// Generate password reset token
+studentSchema.methods.generateResetToken = async function(): Promise<string> {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  this.resetPasswordToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+    
+  this.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+  await this.save();
+  
+  return resetToken;
+};
+
 // Index for faster queries
 studentSchema.index({ email: 1 });
 studentSchema.index({ name: 'text' });
 
-export default mongoose.model<IStudent>('Student', studentSchema); 
+export default mongoose.model<IStudent>('Student', studentSchema);
