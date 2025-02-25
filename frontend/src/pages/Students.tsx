@@ -30,6 +30,7 @@ interface Student {
   _id: string;
   name: string;
   email: string;
+  password: string;
   phoneNumber: string;
   gender: 'male' | 'female' | 'other';
   qualifications: string[];
@@ -72,7 +73,7 @@ export default function Students() {
     setOrderBy(property);
   };
 
-  const handleChangePage = (event: unknown, newPage: number) => {
+  const handleChangePage = (_event: unknown, newPage: number) => {
     setPage(newPage);
   };
 
