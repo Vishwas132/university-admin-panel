@@ -27,11 +27,20 @@ axiosInstance.interceptors.request.use(
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Only redirect to login if not trying to refresh the auth
-    if (error.response?.status === 401 && !error.config.url.includes('/admin/profile')) {
+    // Only redirect to login if not trying to refresh the auth and not on login page
+    if (
+      error.response?.status === 401 && 
+      !error.config.url.includes('/admin/profile') &&
+      !error.config.url.includes('/auth/admin/login') &&
+      !window.location.pathname.includes('/login')
+    ) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      
+      // Use history API instead of window.location for a smoother experience
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

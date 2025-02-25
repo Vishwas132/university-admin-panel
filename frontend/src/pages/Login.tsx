@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, Link as RouterLink } from 'react-router-dom';
+import { useNavigate, Link as RouterLink, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,8 +13,11 @@ import {
   Paper,
   InputAdornment,
   IconButton,
+  Alert,
+  AlertTitle,
+  CircularProgress,
 } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../lib/utils';
 
@@ -27,24 +30,65 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login } = useAuth();
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [isLoggingIn, setIsLoggingIn] = React.useState(false);
+  const [success, setSuccess] = React.useState<string | null>(
+    location.state?.message || null
+  );
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
 
+  React.useEffect(() => {
+    // Clear the message from location state after displaying it
+    if (location.state?.message) {
+      const timer = setTimeout(() => {
+        setSuccess(null);
+        navigate(location.pathname, { replace: true, state: {} });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [location, navigate]);
+
+  // Add a new useEffect to handle error message clearing
+  React.useEffect(() => {
+    // Only set up the timer if there's an error message
+    if (error) {
+      // Clear error message after 10 seconds
+      const errorTimer = setTimeout(() => {
+        setError('');
+      }, 10000);
+      
+      // Clean up the timer if component unmounts or error changes
+      return () => clearTimeout(errorTimer);
+    }
+  }, [error]);
+
   const onSubmit = async (data: LoginFormData) => {
     try {
+      setError('');
+      setIsLoggingIn(true);
       await login(data.email, data.password);
       navigate('/dashboard');
     } catch (err) {
-      setError(getErrorMessage(err));
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.includes('credentials') || errorMsg.includes('password') || errorMsg.includes('email')) {
+        setError('Invalid email or password. Please check your credentials and try again.');
+      } else if (errorMsg.includes('network') || errorMsg.includes('connection')) {
+        setError('Network error. Please check your internet connection and try again.');
+      } else {
+        setError(`Login failed. Please try again later.`);
+      }
+    } finally {
+      setIsLoggingIn(false);
     }
   };
 
@@ -73,13 +117,32 @@ export default function Login() {
             Admin Login
           </Typography>
 
-          {error && (
-            <Typography color="error" sx={{ mb: 2 }}>
-              {error}
-            </Typography>
+          {success && (
+            <Alert 
+              severity="success" 
+              sx={{ mb: 2, width: '100%' }}
+              icon={<CheckCircle fontSize="inherit" />}
+            >
+              <AlertTitle>Success</AlertTitle>
+              {success}
+            </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
+          {error && (
+            <Alert 
+              severity="error" 
+              sx={{ mb: 2, width: '100%' }}
+              icon={<ErrorIcon fontSize="inherit" />}
+            >
+              <AlertTitle>Login Failed</AlertTitle>
+              {error}
+            </Alert>
+          )}
+
+          <Box 
+            component="div"
+            sx={{ mt: 1, width: '100%' }}
+          >
             <TextField
               margin="normal"
               required
@@ -115,16 +178,24 @@ export default function Login() {
                   </InputAdornment>
                 ),
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSubmit(onSubmit)();
+                }
+              }}
               {...register('password')}
             />
             <Button
-              type="submit"
+              type="button"
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
-              disabled={isSubmitting}
+              disabled={isLoggingIn}
+              startIcon={isLoggingIn ? <CircularProgress size={20} color="inherit" /> : null}
+              onClick={handleSubmit(onSubmit)}
             >
-              {isSubmitting ? 'Signing in...' : 'Sign In'}
+              {isLoggingIn ? 'Signing in...' : 'Sign In'}
             </Button>
             <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Link component={RouterLink} to="/forgot-password" variant="body2">

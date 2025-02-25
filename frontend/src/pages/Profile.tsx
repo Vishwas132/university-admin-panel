@@ -15,14 +15,16 @@ import {
   DialogContent,
   DialogContentText,
   DialogTitle,
+  CircularProgress,
+  Tooltip,
+  AlertTitle,
 } from '@mui/material';
-import { PhotoCamera, Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Edit, CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { axiosInstance } from '../lib/axios';
-import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../lib/utils';
 import { useState } from 'react';
 
@@ -44,7 +46,6 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export default function Profile() {
-  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -53,6 +54,12 @@ export default function Profile() {
   const [passwordData, setPasswordData] = useState<PasswordFormData | null>(null);
   const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [imageUploadSuccess, setImageUploadSuccess] = useState<string | null>(null);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [showImageEditHint, setShowImageEditHint] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ['adminProfile'],
@@ -66,7 +73,6 @@ export default function Profile() {
     register: registerProfile,
     handleSubmit: handleProfileSubmit,
     formState: { errors: profileErrors },
-    reset: resetProfile,
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -89,7 +95,13 @@ export default function Profile() {
       axiosInstance.put('/admin/profile', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminProfile'] });
+      setProfileSuccess('Your profile information has been successfully updated. The changes are now visible across the system.');
+      setTimeout(() => setProfileSuccess(null), 5000);
     },
+    onError: () => {
+      setProfileError(`Failed to update profile. Please check your information and try again.`);
+      setTimeout(() => setProfileError(null), 5000);
+    }
   });
 
   const updatePassword = useMutation({
@@ -100,14 +112,25 @@ export default function Profile() {
       }),
     onSuccess: () => {
       resetPassword();
+      setUpdateSuccess('Password successfully changed. Please use your new password for your next login.');
+      setTimeout(() => setUpdateSuccess(null), 5000);
     },
+    onError: (error) => {
+      const errorMsg = getErrorMessage(error);
+      if (errorMsg.includes('current password')) {
+        setUpdateError('The current password you entered is incorrect. Please try again with the correct password.');
+      } else {
+        setUpdateError(`Failed to update password. Please try again later.`);
+      }
+      setTimeout(() => setUpdateError(null), 5000);
+    }
   });
 
   const handleProfileUpdate = async (data: ProfileFormData) => {
     try {
       await updateProfile.mutateAsync(data);
     } catch (error) {
-      console.error('Failed to update profile:', error);
+      // Error is handled by the mutation's onError
     }
   };
 
@@ -116,18 +139,25 @@ export default function Profile() {
     setOpenConfirmDialog(true);
   };
 
+  // Custom form submit handlers
+  const handleProfileFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handleProfileSubmit(handleProfileUpdate)();
+  };
+
+  const handlePasswordFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    handlePasswordSubmit(handlePasswordUpdate)();
+  };
+
   const confirmPasswordUpdate = async () => {
     if (!passwordData) return;
     
     try {
+      setOpenConfirmDialog(false);
       await updatePassword.mutateAsync(passwordData);
-      setOpenConfirmDialog(false);
-      setUpdateSuccess('Password updated successfully');
-      setTimeout(() => setUpdateSuccess(null), 5000);
     } catch (error) {
-      setOpenConfirmDialog(false);
-      setUpdateError(getErrorMessage(error));
-      setTimeout(() => setUpdateError(null), 5000);
+      // Error is handled by the mutation's onError
     }
   };
 
@@ -135,18 +165,53 @@ export default function Profile() {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setImageUploadError('The image file is too large. Please select an image smaller than 5MB.');
+      setTimeout(() => setImageUploadError(null), 5000);
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      setImageUploadError('Invalid file format. Please select a valid image file (JPG, PNG, GIF, etc.).');
+      setTimeout(() => setImageUploadError(null), 5000);
+      return;
+    }
+
     const formData = new FormData();
     formData.append('profilePicture', file);
 
     try {
+      setIsUploading(true);
       await axiosInstance.put('/admin/profile/picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       queryClient.invalidateQueries({ queryKey: ['adminProfile'] });
+      setImageUploadSuccess('Your profile picture has been successfully updated and is now visible across the system.');
+      setTimeout(() => setImageUploadSuccess(null), 5000);
     } catch (error) {
-      console.error('Failed to upload image:', error);
+      const errorMsg = getErrorMessage(error);
+      if (errorMsg.includes('size')) {
+        setImageUploadError('The image file is too large. Please select a smaller image.');
+      } else if (errorMsg.includes('format') || errorMsg.includes('type')) {
+        setImageUploadError('Invalid image format. Please select a valid image file.');
+      } else {
+        setImageUploadError(`Failed to upload profile picture. Please try again later.`);
+      }
+      setTimeout(() => setImageUploadError(null), 5000);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  // Show image edit hint when user hovers over avatar for the first time
+  const handleAvatarMouseEnter = () => {
+    if (!showImageEditHint) {
+      setShowImageEditHint(true);
+      setTimeout(() => setShowImageEditHint(false), 5000);
     }
   };
 
@@ -156,15 +221,41 @@ export default function Profile() {
         Profile Settings
       </Typography>
 
+      {imageUploadSuccess && (
+        <Alert 
+          severity="success" 
+          sx={{ mb: 2 }}
+          icon={<CheckCircle fontSize="inherit" />}
+        >
+          <AlertTitle>Profile Picture Updated</AlertTitle>
+          {imageUploadSuccess}
+        </Alert>
+      )}
+      {imageUploadError && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 2 }}
+          icon={<ErrorIcon fontSize="inherit" />}
+        >
+          <AlertTitle>Image Upload Failed</AlertTitle>
+          {imageUploadError}
+        </Alert>
+      )}
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 3, textAlign: 'center' }}>
-            <Box sx={{ position: 'relative', display: 'inline-block' }}>
-              <Avatar
-                src={profile?.profilePicture}
-                alt={profile?.name}
-                sx={{ width: 120, height: 120, mb: 2, mx: 'auto' }}
-              />
+            <Box 
+              sx={{ position: 'relative', display: 'inline-block' }}
+              onMouseEnter={handleAvatarMouseEnter}
+            >
+              <Tooltip title="Click to change profile picture" arrow placement="top">
+                <Avatar
+                  src={profile?.profilePicture}
+                  alt={profile?.name}
+                  sx={{ width: 120, height: 120, mb: 2, mx: 'auto' }}
+                />
+              </Tooltip>
               <Box
                 sx={{
                   position: 'absolute',
@@ -184,24 +275,31 @@ export default function Profile() {
                   },
                 }}
               >
-                <IconButton
-                  color="primary"
-                  aria-label="upload picture"
-                  component="label"
-                  sx={{
-                    color: 'white',
-                  }}
-                >
-                  <input
-                    hidden
-                    accept="image/*"
-                    type="file"
-                    onChange={handleImageUpload}
-                  />
-                  <PhotoCamera fontSize="large" />
-                </IconButton>
+                {isUploading ? (
+                  <CircularProgress size={40} sx={{ color: 'white' }} />
+                ) : (
+                  <IconButton
+                    color="primary"
+                    aria-label="upload picture"
+                    component="label"
+                    sx={{
+                      color: 'white',
+                    }}
+                  >
+                    <input
+                      hidden
+                      accept="image/*"
+                      type="file"
+                      onChange={handleImageUpload}
+                    />
+                    <Edit fontSize="large" />
+                  </IconButton>
+                )}
               </Box>
             </Box>
+            <Typography variant="caption" color="primary" sx={{ display: 'block', mb: 2 }}>
+              Click on the image to change your profile picture
+            </Typography>
             <Typography variant="h6">{profile?.name}</Typography>
             <Typography color="textSecondary">{profile?.email}</Typography>
             <Typography variant="body2" sx={{ mt: 1 }}>
@@ -213,20 +311,54 @@ export default function Profile() {
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3 }}>
             {updateSuccess && (
-              <Alert severity="success" sx={{ mb: 2 }}>
+              <Alert 
+                severity="success" 
+                sx={{ mb: 2 }}
+                icon={<CheckCircle fontSize="inherit" />}
+              >
+                <AlertTitle>Password Updated</AlertTitle>
                 {updateSuccess}
               </Alert>
             )}
             {updateError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
+              <Alert 
+                severity="error" 
+                sx={{ mb: 2 }}
+                icon={<ErrorIcon fontSize="inherit" />}
+              >
+                <AlertTitle>Password Update Failed</AlertTitle>
                 {updateError}
+              </Alert>
+            )}
+            {profileSuccess && (
+              <Alert 
+                severity="success" 
+                sx={{ mb: 2 }}
+                icon={<CheckCircle fontSize="inherit" />}
+              >
+                <AlertTitle>Profile Updated</AlertTitle>
+                {profileSuccess}
+              </Alert>
+            )}
+            {profileError && (
+              <Alert 
+                severity="error" 
+                sx={{ mb: 2 }}
+                icon={<ErrorIcon fontSize="inherit" />}
+              >
+                <AlertTitle>Profile Update Failed</AlertTitle>
+                {profileError}
               </Alert>
             )}
             
             <Typography variant="h6" gutterBottom>
               Personal Information
             </Typography>
-            <Box component="form" onSubmit={handleProfileSubmit(handleProfileUpdate)}>
+            <Box 
+              component="form" 
+              noValidate
+              onSubmit={handleProfileFormSubmit}
+            >
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <TextField
@@ -251,6 +383,7 @@ export default function Profile() {
                     type="submit"
                     variant="contained"
                     disabled={updateProfile.isPending}
+                    startIcon={updateProfile.isPending ? <CircularProgress size={20} color="inherit" /> : null}
                   >
                     {updateProfile.isPending ? 'Saving...' : 'Save Changes'}
                   </Button>
@@ -263,7 +396,11 @@ export default function Profile() {
             <Typography variant="h6" gutterBottom>
               Change Password
             </Typography>
-            <Box component="form" onSubmit={handlePasswordSubmit(handlePasswordUpdate)}>
+            <Box 
+              component="form" 
+              noValidate
+              onSubmit={handlePasswordFormSubmit}
+            >
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <TextField
@@ -339,6 +476,7 @@ export default function Profile() {
                     type="submit"
                     variant="contained"
                     disabled={updatePassword.isPending}
+                    startIcon={updatePassword.isPending ? <CircularProgress size={20} color="inherit" /> : null}
                   >
                     {updatePassword.isPending ? 'Updating...' : 'Update Password'}
                   </Button>
@@ -357,7 +495,7 @@ export default function Profile() {
         <DialogTitle>Confirm Password Change</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to change your password? You will need to use the new password for your next login.
+            Are you sure you want to change your password? You will need to use the new password for your next login. This action cannot be undone.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

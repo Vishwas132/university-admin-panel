@@ -13,8 +13,11 @@ import {
   Paper,
   InputAdornment,
   IconButton,
+  Alert,
+  AlertTitle,
+  CircularProgress,
 } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Error as ErrorIcon } from '@mui/icons-material';
 import { axiosInstance } from '../lib/axios';
 import { getErrorMessage } from '../lib/utils';
 
@@ -35,6 +38,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [isRegistering, setIsRegistering] = React.useState(false);
 
   const {
     register,
@@ -46,15 +50,34 @@ export default function Register() {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
+      setError('');
+      setIsRegistering(true);
       await axiosInstance.post('/auth/admin/register', {
         name: data.name,
         email: data.email,
         password: data.password,
       });
-      navigate('/login', { state: { message: 'Registration successful. Please login.' } });
+      navigate('/login', { state: { message: 'Registration successful! Your account has been created. Please login with your credentials.' } });
     } catch (err) {
-      setError(getErrorMessage(err));
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.includes('email') && errorMsg.includes('exists')) {
+        setError('This email address is already registered. Please use a different email or try to login.');
+      } else if (errorMsg.includes('network') || errorMsg.includes('connection')) {
+        setError('Network error. Please check your internet connection and try again.');
+      } else {
+        setError(`Registration failed. Please try again later.`);
+      }
+    } finally {
+      setIsRegistering(false);
     }
+  };
+
+  // Custom form submit handler
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Manually trigger form validation and submission
+    handleSubmit(onSubmit)();
   };
 
   return (
@@ -83,12 +106,22 @@ export default function Register() {
           </Typography>
 
           {error && (
-            <Typography color="error" sx={{ mb: 2 }}>
+            <Alert 
+              severity="error" 
+              sx={{ mb: 2, width: '100%' }}
+              icon={<ErrorIcon fontSize="inherit" />}
+            >
+              <AlertTitle>Registration Failed</AlertTitle>
               {error}
-            </Typography>
+            </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1 }}>
+          <Box 
+            component="form" 
+            noValidate
+            onSubmit={handleFormSubmit}
+            sx={{ mt: 1, width: '100%' }}
+          >
             <TextField
               margin="normal"
               required
@@ -165,9 +198,10 @@ export default function Register() {
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isRegistering}
+              startIcon={isRegistering ? <CircularProgress size={20} color="inherit" /> : null}
             >
-              {isSubmitting ? 'Registering...' : 'Register'}
+              {isRegistering ? 'Registering...' : 'Register'}
             </Button>
             <Box sx={{ textAlign: 'center' }}>
               <Link component={RouterLink} to="/login" variant="body2">

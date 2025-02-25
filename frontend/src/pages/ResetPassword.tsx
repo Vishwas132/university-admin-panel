@@ -12,8 +12,11 @@ import {
   Paper,
   InputAdornment,
   IconButton,
+  Alert,
+  AlertTitle,
+  CircularProgress,
 } from '@mui/material';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff, Error as ErrorIcon } from '@mui/icons-material';
 import { axiosInstance } from '../lib/axios';
 import { getErrorMessage } from '../lib/utils';
 
@@ -35,31 +38,51 @@ export default function ResetPassword() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [isResetting, setIsResetting] = React.useState(false);
 
   React.useEffect(() => {
     if (!token) {
-      navigate('/login');
+      navigate('/login', { state: { message: 'Password reset link is invalid or has expired. Please request a new password reset.' } });
     }
   }, [token, navigate]);
 
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<ResetPasswordFormData>({
     resolver: zodResolver(resetPasswordSchema),
   });
 
   const onSubmit = async (data: ResetPasswordFormData) => {
     try {
+      setError('');
+      setIsResetting(true);
       await axiosInstance.put('/auth/reset-password', {
         token,
         password: data.password,
       });
-      navigate('/login', { state: { message: 'Password has been reset successfully. Please login with your new password.' } });
+      navigate('/login', { state: { message: 'Your password has been reset successfully. You can now login with your new password.' } });
     } catch (err) {
-      setError(getErrorMessage(err));
+      const errorMsg = getErrorMessage(err);
+      if (errorMsg.includes('token') || errorMsg.includes('expired')) {
+        setError('The password reset link is invalid or has expired. Please request a new password reset.');
+      } else if (errorMsg.includes('network') || errorMsg.includes('connection')) {
+        setError('Network error. Please check your internet connection and try again.');
+      } else {
+        setError(`Failed to reset password. Please try again later.`);
+      }
+    } finally {
+      setIsResetting(false);
     }
+  };
+
+  // Custom form submit handler
+  const handleFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Manually trigger form validation and submission
+    handleSubmit(onSubmit)();
   };
 
   if (!token) {
@@ -92,12 +115,22 @@ export default function ResetPassword() {
           </Typography>
 
           {error && (
-            <Typography color="error" sx={{ mb: 2 }}>
+            <Alert 
+              severity="error" 
+              sx={{ mb: 2, width: '100%' }}
+              icon={<ErrorIcon fontSize="inherit" />}
+            >
+              <AlertTitle>Password Reset Failed</AlertTitle>
               {error}
-            </Typography>
+            </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit(onSubmit)} sx={{ mt: 1, width: '100%' }}>
+          <Box 
+            component="form" 
+            noValidate
+            onSubmit={handleFormSubmit}
+            sx={{ mt: 1, width: '100%' }}
+          >
             <TextField
               margin="normal"
               required
@@ -151,9 +184,10 @@ export default function ResetPassword() {
               fullWidth
               variant="contained"
               sx={{ mt: 3, mb: 2 }}
-              disabled={isSubmitting}
+              disabled={isResetting}
+              startIcon={isResetting ? <CircularProgress size={20} color="inherit" /> : null}
             >
-              {isSubmitting ? 'Resetting...' : 'Reset Password'}
+              {isResetting ? 'Resetting...' : 'Reset Password'}
             </Button>
           </Box>
         </Paper>
