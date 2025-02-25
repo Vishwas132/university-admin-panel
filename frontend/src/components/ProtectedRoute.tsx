@@ -3,8 +3,19 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { CircularProgress, Box } from '@mui/material';
 
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'student';
+}
+
+type ChildrenType = 
+  | React.ReactNode
+  | ((props: { user: User }) => React.ReactElement);
+
 interface ProtectedRouteProps {
-  children: React.ReactNode;
+  children: ChildrenType;
   allowedRoles?: ('admin' | 'student')[];
 }
 
@@ -36,5 +47,11 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/dashboard" state={{ message: "You don't have permission to access this page" }} replace />;
   }
 
+  // Handle function as children
+  if (typeof children === 'function' && user) {
+    return <>{children({ user })}</>;
+  }
+  
+  // Handle regular ReactNode children
   return <>{children}</>;
-} 
+}

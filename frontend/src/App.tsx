@@ -12,6 +12,7 @@ import ResetPassword from './pages/ResetPassword';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
+import StudentProfile from './pages/StudentProfile';
 import Students from './pages/Students';
 
 const queryClient = new QueryClient();
@@ -51,8 +52,17 @@ function App() {
                   } 
                 />
                 
-                {/* Routes for both admin and students */}
-                <Route path="profile" element={<Profile />} />
+                {/* Profile routes based on user role */}
+                <Route 
+                  path="profile" 
+                  element={
+                    <ProtectedRoute>
+                      {({ user }) => (
+                        user?.role === 'student' ? <StudentProfile /> : <Profile />
+                      )}
+                    </ProtectedRoute>
+                  } 
+                />
               </Route>
               
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
@@ -64,4 +74,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

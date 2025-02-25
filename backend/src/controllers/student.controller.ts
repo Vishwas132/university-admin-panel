@@ -1,7 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import Student from '../models/Student.js';
-import { CreateStudentInput, UpdateStudentInput } from '../schemas/student.schema.js';
-import { NotFoundError, ConflictError, AuthorizationError, ValidationError } from '../utils/errors.js';
+import { 
+  CreateStudentInput, 
+  UpdateStudentInput, 
+  UpdateProfileInput,
+  PasswordChangeInput 
+} from '../schemas/student.schema.js';
+import { NotFoundError, ConflictError, AuthorizationError, ValidationError, AuthenticationError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
 
 export const createStudent = async (
@@ -234,4 +239,163 @@ export const getProfileImage = async (
   } catch (error) {
     next(error);
   }
-}; 
+};
+
+export const getProfile = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
+  try {
+    logger.info('Fetching student profile', { studentId: req.user.id });
+
+    const student = await Student.findById(req.user.id).select('-password');
+    if (!student) {
+      throw new NotFoundError('Student not found');
+    }
+
+    logger.debug('Student profile retrieved successfully', { studentId: student._id });
+    res.json(student);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProfile = async (
+  req: Request<{}, {}, UpdateProfileInput>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    logger.info('Processing student profile update', { studentId: req.user.id });
+
+    const student = await Student.findById(req.user.id);
+    if (!student) {
+      throw new NotFoundError('Student not found');
+    }
+
+    const { name, email, phoneNumber } = req.body;
+
+    // Check if email is being changed and if it's already in use
+    if (email && email !== student.email) {
+      logger.debug('Checking email availability', { email });
+      const emailExists = await Student.findOne({ email });
+      if (emailExists) {
+        throw new ConflictError('Email already in use');
+      }
+    }
+
+    student.name = name || student.name;
+    student.email = email || student.email;
+    if (phoneNumber) {
+      student.phoneNumber = phoneNumber;
+    }
+
+    const updatedStudent = await student.save();
+    logger.info('Student profile updated successfully', { studentId: student._id });
+
+    res.json({
+      _id: updatedStudent._id,
+      name: updatedStudent.name,
+      email: updatedStudent.email,
+      phoneNumber: updatedStudent.phoneNumber,
+      qualifications: updatedStudent.qualifications,
+      gender: updatedStudent.gender,
+      createdAt: updatedStudent.createdAt
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const changePassword = async (
+  req: Request<{}, {}, PasswordChangeInput>,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    logger.info('Processing student password change', { studentId: req.user.id });
+
+    const student = await Student.findById(req.user.id);
+    if (!student) {
+      throw new NotFoundError('Student not found');
+    }
+
+    const { currentPassword, newPassword } = req.body;
+
+    // Verify current password
+    const isMatch = await student.comparePassword(currentPassword);
+    if (!isMatch) {
+      throw new AuthenticationError('Current password is incorrect');
+    }
+
+    // Update password
+    student.password = newPassword;
+    await student.save();
+
+    logger.info('Student password changed successfully', { studentId: student._id });
+    res.json({ message: 'Password updated successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadProfilePicture = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    logger.info('Processing student profile picture upload', { studentId: req.user.id });
+
+    if (!req.file) {
+      throw new ValidationError('No file uploaded');
+    }
+
+    const student = await Student.findById(req.user.id);
+    if (!student) {
+      throw new NotFoundError('Student not found');
+    }
+
+    // Update profile picture
+    student.profileImage = req.file.buffer;
+    await student.save();
+
+    logger.info('Student profile picture updated successfully', { 
+      studentId: student._id,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype
+    });
+
+    res.json({ 
+      message: 'Profile picture updated successfully',
+      profilePicture: {
+        contentType: req.file.mimetype,
+        size: req.file.size
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProfilePicture = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
+  try {
+    logger.info('Fetching student profile picture', { studentId: req.user.id });
+
+    const student = await Student.findById(req.user.id);
+    if (!student || !student.profileImage) {
+      throw new NotFoundError('Profile picture not found');
+    }
+
+    logger.debug('Student profile picture retrieved successfully', { studentId: student._id });
+    res.set('Content-Type', 'image/jpeg');
+    res.send(student.profileImage);
+  } catch (error) {
+    next(error);
+  }
+};

@@ -2,6 +2,25 @@ import { z } from 'zod';
 
 const phoneRegex = /^\+?[\d\s-]{8,}$/;
 
+export const profileSchema = z.object({
+  body: z.object({
+    name: z.string().min(2, 'Name must be at least 2 characters'),
+    email: z.string().email('Invalid email address'),
+    phoneNumber: z.string().regex(phoneRegex, 'Invalid phone number format').optional(),
+  })
+});
+
+export const passwordSchema = z.object({
+  body: z.object({
+    currentPassword: z.string().min(6, 'Password must be at least 6 characters'),
+    newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+    confirmPassword: z.string(),
+  }).refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  })
+});
+
 export const createStudentSchema = z.object({
   body: z.object({
     name: z.string()
@@ -60,4 +79,6 @@ export const uploadProfileImageSchema = z.object({
 
 export type CreateStudentInput = z.infer<typeof createStudentSchema>['body'];
 export type UpdateStudentInput = z.infer<typeof updateStudentSchema>['body'];
-export type UploadProfileImageInput = z.infer<typeof uploadProfileImageSchema>; 
+export type UploadProfileImageInput = z.infer<typeof uploadProfileImageSchema>;
+export type UpdateProfileInput = z.infer<typeof profileSchema>['body'];
+export type PasswordChangeInput = z.infer<typeof passwordSchema>['body'];

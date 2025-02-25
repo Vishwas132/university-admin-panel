@@ -6,7 +6,12 @@ import {
   updateStudent,
   deleteStudent,
   uploadProfileImage,
-  getProfileImage
+  getProfileImage,
+  getProfile,
+  updateProfile,
+  changePassword,
+  uploadProfilePicture,
+  getProfilePicture
 } from '../controllers/student.controller.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -14,7 +19,9 @@ import { upload } from '../middleware/upload.js';
 import {
   createStudentSchema,
   updateStudentSchema,
-  uploadProfileImageSchema
+  uploadProfileImageSchema,
+  profileSchema,
+  passwordSchema
 } from '../schemas/student.schema.js';
 
 const router = express.Router();
@@ -31,6 +38,18 @@ router.post(
 );
 
 router.get('/', adminOnly, getStudents);
+
+// Student profile specific routes - must be placed before the /:id routes
+// to avoid conflicts with the id parameter
+router.get('/profile', getProfile);
+router.put('/profile', validate(profileSchema), updateProfile);
+router.put('/profile/change-password', validate(passwordSchema), changePassword);
+router.put(
+  '/profile/picture', 
+  upload.single('profilePicture'),
+  uploadProfilePicture
+);
+router.get('/profile/picture', getProfilePicture);
 
 // Routes accessible by both admin and students
 // (Student access is controlled in the controller)
@@ -55,4 +74,4 @@ router.post(
 
 router.get('/:id/profile-image', getProfileImage);
 
-export default router; 
+export default router;
