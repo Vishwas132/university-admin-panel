@@ -36,7 +36,7 @@ app.use(errorHandler);
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'College Admin Panel API' });
+  res.json({ message: 'University Admin Panel API' });
 });
 
 const PORT = process.env.PORT || 5000;

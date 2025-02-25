@@ -1,7 +1,7 @@
 {
-  "name": "college-admin-panel-backend",
+  "name": "university-admin-panel-backend",
   "version": "1.0.0",
-  "description": "Backend for College Admin Panel",
+  "description": "Backend for University Admin Panel",
   "main": "dist/app.js",
   "type": "module",
   "scripts": {

@@ -1,9 +1,9 @@
 export const swaggerDocument = {
   openapi: '3.0.0',
   info: {
-    title: 'College Admin Panel API',
+    title: 'University Admin Panel API',
     version: '1.0.0',
-    description: 'API documentation for College Admin Panel'
+    description: 'API documentation for University Admin Panel'
   },
   servers: [
     {

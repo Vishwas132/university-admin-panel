@@ -61,7 +61,7 @@ export default function Header({ onMenuClick, isSidebarOpen }: HeaderProps) {
         </IconButton>
 
         <Typography variant="h6" component="div" sx={{ flexGrow: 1, color: 'text.primary' }}>
-          College Admin Panel
+          University Admin Panel
         </Typography>
 
         <Button
