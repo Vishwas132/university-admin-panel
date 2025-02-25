@@ -6,6 +6,7 @@ interface User {
   _id: string;
   name: string;
   email: string;
+  role: 'admin' | 'student';
   profilePicture?: string;
   lastLogin?: Date;
 }
@@ -13,7 +14,7 @@ interface User {
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, isStudent?: boolean) => Promise<void>;
   logout: () => void;
 }
 
@@ -34,11 +35,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Set the token in axios headers
           axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
           
-          // Verify token by fetching user profile
-          const response = await axiosInstance.get('/admin/profile');
-          setUser(response.data);
+          // Parse the stored user
+          const userData = JSON.parse(storedUser) as User;
+          
+          // Verify token by making an appropriate request based on user role
+          if (userData.role === 'admin') {
+            await axiosInstance.get('/admin/profile');
+          } else {
+            // For students, verify by fetching their profile
+            await axiosInstance.get(`/students/${userData._id}`);
+          }
+          
+          // If verification succeeds, set the user
+          setUser(userData);
           setIsAuthenticated(true);
         } catch (error) {
+          console.error('Auth initialization error:', error);
           // If token is invalid, clear storage
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -51,13 +63,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await axiosInstance.post('/auth/admin/login', {
+  const login = async (email: string, password: string, isStudent = false) => {
+    const endpoint = isStudent ? '/auth/student/login' : '/auth/admin/login';
+    
+    const response = await axiosInstance.post(endpoint, {
       email,
       password,
     });
     
-    const { token, user: userData } = response.data;
+    const { token, ...userData } = response.data;
     
     // Store token and user data
     localStorage.setItem('token', token);
@@ -66,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set axios default header
     axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${token}`;
     
-    setUser(userData);
+    setUser(userData as User);
     setIsAuthenticated(true);
   };
 

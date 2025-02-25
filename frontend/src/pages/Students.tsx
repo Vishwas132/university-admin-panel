@@ -62,6 +62,8 @@ export default function Students() {
       });
       return response.data;
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: 60000, // Refetch every minute
   });
 
   const handleSort = (property: OrderBy) => {

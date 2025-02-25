@@ -8,7 +8,11 @@ export const createStudent = async (
 ) => {
   try {
     const student = await Student.create(req.body);
-    res.status(201).json(student);
+    
+    // Don't return the password in the response
+    const { password, ...newStudent } = student.toObject();
+    
+    res.status(201).json(newStudent);
   } catch (error: any) {
     if (error.code === 11000) {
       res.status(400).json({ message: 'Email already exists' });
@@ -49,7 +53,15 @@ export const getStudents = async (req: Request, res: Response) => {
 
 export const getStudent = async (req: Request, res: Response) => {
   try {
-    const student = await Student.findById(req.params.id)
+    const studentId = req.params.id;
+    
+    // Check if the user is a student trying to access another student's data
+    if (req.user?.role === 'student' && req.user.id !== studentId) {
+      res.status(403).json({ message: 'Access denied. You can only view your own profile.' });
+      return;
+    }
+    
+    const student = await Student.findById(studentId)
       .select('-profileImage');
     
     if (!student) {
@@ -68,7 +80,15 @@ export const updateStudent = async (
   res: Response
 ) => {
   try {
-    const student = await Student.findById(req.params.id);
+    const studentId = req.params.id;
+    
+    // Check if the user is a student trying to update another student's data
+    if (req.user?.role === 'student' && req.user.id !== studentId) {
+      res.status(403).json({ message: 'Access denied. You can only update your own profile.' });
+      return;
+    }
+    
+    const student = await Student.findById(studentId).select('+password');
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
@@ -83,10 +103,21 @@ export const updateStudent = async (
       }
     }
 
-    Object.assign(student, req.body);
+    // Update fields except password
+    const { password, ...otherFields } = req.body;
+    Object.assign(student, otherFields);
+    
+    // Only update password if provided
+    if (password) {
+      student.password = password;
+    }
+    
     await student.save();
 
-    res.json(student);
+    // Don't return the password in the response
+    const { password: _, ...updatedStudent } = student.toObject();
+
+    res.json(updatedStudent);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }
@@ -116,7 +147,15 @@ export const uploadProfileImage = async (
       return;
     }
 
-    const student = await Student.findById(req.params.id);
+    const studentId = req.params.id;
+    
+    // Check if the user is a student trying to update another student's profile image
+    if (req.user?.role === 'student' && req.user.id !== studentId) {
+      res.status(403).json({ message: 'Access denied. You can only update your own profile image.' });
+      return;
+    }
+
+    const student = await Student.findById(studentId);
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
@@ -140,7 +179,11 @@ export const uploadProfileImage = async (
 
 export const getProfileImage = async (req: Request, res: Response) => {
   try {
-    const student = await Student.findById(req.params.id)
+    const studentId = req.params.id;
+    
+    // Students can view any profile image, no need for access control here
+    
+    const student = await Student.findById(studentId)
       .select('profileImage');
     
     if (!student || !student.profileImage) {

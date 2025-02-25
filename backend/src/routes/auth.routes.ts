@@ -3,18 +3,21 @@ import {
   register,
   login,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  studentLogin
 } from '../controllers/auth.controller.js';
 import { validate } from '../middleware/validate.js';
 import { 
   registerSchema,
   loginSchema,
   forgotPasswordSchema, 
-  resetPasswordSchema 
+  resetPasswordSchema,
+  studentLoginSchema
 } from '../schemas/auth.schema.js';
 
 const router = express.Router();
 
+// Admin routes
 router.post(
   '/admin/register',
   validate(registerSchema),
@@ -27,6 +30,14 @@ router.post(
   login
 );
 
+// Student routes
+router.post(
+  '/student/login',
+  validate(studentLoginSchema),
+  studentLogin
+);
+
+// Password reset routes
 router.post(
   '/forgot-password', 
   validate(forgotPasswordSchema), 

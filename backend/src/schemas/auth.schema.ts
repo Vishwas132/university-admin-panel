@@ -50,7 +50,18 @@ export const resetPasswordSchema = z.object({
   }),
 });
 
+export const studentLoginSchema = z.object({
+  body: z.object({
+    email: z.string()
+      .email('Invalid email format')
+      .min(1, 'Email is required'),
+    password: z.string()
+      .min(1, 'Password is required'),
+  }),
+});
+
 export type RegisterInput = z.infer<typeof registerSchema>['body'];
 export type LoginInput = z.infer<typeof loginSchema>['body'];
 export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>['body'];
-export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>['body']; 
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>['body'];
+export type StudentLoginInput = z.infer<typeof studentLoginSchema>['body']; 

@@ -31,7 +31,9 @@ axiosInstance.interceptors.response.use(
     if (
       error.response?.status === 401 && 
       !error.config.url.includes('/admin/profile') &&
+      !error.config.url.includes('/students/') &&
       !error.config.url.includes('/auth/admin/login') &&
+      !error.config.url.includes('/auth/student/login') &&
       !window.location.pathname.includes('/login')
     ) {
       localStorage.removeItem('token');

@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import Admin, { IAdmin } from '../models/Admin.js';
+import Student, { IStudent } from '../models/Student.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendPasswordResetEmail } from '../utils/email.js';
 import crypto from 'crypto';
-import { ForgotPasswordInput, ResetPasswordInput, RegisterInput, LoginInput } from '../schemas/auth.schema.js';
+import { ForgotPasswordInput, ResetPasswordInput, RegisterInput, LoginInput, StudentLoginInput } from '../schemas/auth.schema.js';
 
 export const register = async (req: Request<{}, {}, RegisterInput>, res: Response) => {
   try {
@@ -126,6 +127,38 @@ export const resetPassword = async (req: Request<{}, {}, ResetPasswordInput>, re
     await admin.save();
 
     res.json({ message: 'Password reset successful' });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const studentLogin = async (req: Request<{}, {}, StudentLoginInput>, res: Response) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find student with password field
+    const student = await Student.findOne({ email }).select('+password');
+    if (!student) {
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
+    }
+
+    // Verify password
+    const isMatch = await student.comparePassword(password);
+    if (!isMatch) {
+      res.status(401).json({ message: 'Invalid credentials' });
+      return;
+    }
+
+    const token = generateToken(student);
+
+    res.json({
+      _id: student._id,
+      name: student.name,
+      email: student.email,
+      role: 'student',
+      token
+    });
   } catch (error: any) {
     res.status(500).json({ message: error.message });
   }

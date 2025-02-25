@@ -24,10 +24,13 @@ function App() {
         <AuthProvider>
           <Router>
             <Routes>
+              {/* Public routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              
+              {/* Protected routes */}
               <Route
                 path="/dashboard"
                 element={
@@ -37,9 +40,21 @@ function App() {
                 }
               >
                 <Route index element={<Dashboard />} />
-                <Route path="students" element={<Students />} />
+                
+                {/* Admin-only routes */}
+                <Route 
+                  path="students" 
+                  element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                      <Students />
+                    </ProtectedRoute>
+                  } 
+                />
+                
+                {/* Routes for both admin and students */}
                 <Route path="profile" element={<Profile />} />
               </Route>
+              
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
             </Routes>
           </Router>

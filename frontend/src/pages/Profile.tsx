@@ -67,6 +67,8 @@ export default function Profile() {
       const response = await axiosInstance.get('/admin/profile');
       return response.data;
     },
+    refetchOnWindowFocus: false,
+    refetchInterval: 60000, // Refetch every minute
   });
 
   const {

@@ -1,6 +1,19 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from '../utils/jwt.js';
 
+// Extend the Request type to include user information
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: string;
+        email: string;
+        role: 'admin' | 'student';
+      };
+    }
+  }
+}
+
 export const protect = async (
   req: Request,
   res: Response,
@@ -16,10 +29,36 @@ export const protect = async (
 
     const token = authHeader.split(' ')[1];
     const decoded = verifyToken(token);
-    req.admin = decoded;
+    req.user = decoded;
 
     next();
   } catch (error) {
     res.status(401).json({ message: 'Not authorized' });
   }
+};
+
+// Middleware to restrict access to admin only
+export const adminOnly = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (req.user?.role !== 'admin') {
+    res.status(403).json({ message: 'Access denied. Admin only.' });
+    return;
+  }
+  next();
+};
+
+// Middleware to restrict access to students only
+export const studentOnly = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  if (req.user?.role !== 'student') {
+    res.status(403).json({ message: 'Access denied. Student only.' });
+    return;
+  }
+  next();
 }; 

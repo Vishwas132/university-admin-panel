@@ -8,7 +8,7 @@ import {
   uploadProfileImage,
   getProfileImage
 } from '../controllers/student.controller.js';
-import { protect } from '../middleware/auth.js';
+import { protect, adminOnly } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
 import { upload } from '../middleware/upload.js';
 import {
@@ -22,15 +22,18 @@ const router = express.Router();
 // All routes are protected
 router.use(protect);
 
-// Student CRUD routes
+// Admin-only routes
 router.post(
   '/',
+  adminOnly,
   validate(createStudentSchema),
   createStudent
 );
 
-router.get('/', getStudents);
+router.get('/', adminOnly, getStudents);
 
+// Routes accessible by both admin and students
+// (Student access is controlled in the controller)
 router.get('/:id', getStudent);
 
 router.put(
@@ -39,7 +42,8 @@ router.put(
   updateStudent
 );
 
-router.delete('/:id', deleteStudent);
+// Admin-only routes
+router.delete('/:id', adminOnly, deleteStudent);
 
 // Profile image routes
 router.post(

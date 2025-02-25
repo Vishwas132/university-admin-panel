@@ -13,7 +13,10 @@ export const createStudentSchema = z.object({
       .regex(phoneRegex, 'Invalid phone number format'),
     qualifications: z.array(z.string())
       .min(1, 'At least one qualification is required'),
-    gender: z.enum(['male', 'female', 'other'])
+    gender: z.enum(['male', 'female', 'other']),
+    password: z.string()
+      .min(6, 'Password must be at least 6 characters')
+      .max(100, 'Password is too long')
   })
 });
 
@@ -36,6 +39,10 @@ export const updateStudentSchema = z.object({
       .min(1, 'At least one qualification is required')
       .optional(),
     gender: z.enum(['male', 'female', 'other'])
+      .optional(),
+    password: z.string()
+      .min(6, 'Password must be at least 6 characters')
+      .max(100, 'Password is too long')
       .optional()
   })
 });

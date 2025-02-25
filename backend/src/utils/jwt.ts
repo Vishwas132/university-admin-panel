@@ -1,11 +1,18 @@
 import jwt from 'jsonwebtoken';
 import { IAdmin } from '../models/Admin.js';
+import { IStudent } from '../models/Student.js';
 
-export const generateToken = (admin: IAdmin): string => {
+type UserType = IAdmin | IStudent;
+
+export const generateToken = (user: UserType): string => {
+  // Determine if the user is an admin or student
+  const isAdmin = 'lastLogin' in user;
+  
   return jwt.sign(
     { 
-      id: admin._id,
-      email: admin.email 
+      id: user._id,
+      email: user.email,
+      role: isAdmin ? 'admin' : 'student'
     },
     process.env.JWT_SECRET!,
     { expiresIn: '1d' }
