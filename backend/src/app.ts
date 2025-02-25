@@ -9,6 +9,7 @@ import adminRoutes from './routes/admin.routes.js';
 import studentRoutes from './routes/student.routes.js';
 import * as swaggerUi from 'swagger-ui-express';
 import { swaggerDocument } from './utils/swagger.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/students', studentRoutes);
+app.use(errorHandler);
 
 // Basic route
 app.get('/', (req, res) => {

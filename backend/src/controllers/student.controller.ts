@@ -1,32 +1,44 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import Student from '../models/Student.js';
 import { CreateStudentInput, UpdateStudentInput } from '../schemas/student.schema.js';
+import { NotFoundError, ConflictError, AuthorizationError, ValidationError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 
 export const createStudent = async (
   req: Request<{}, {}, CreateStudentInput>,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
+    logger.info('Creating new student', { email: req.body.email });
+
     const student = await Student.create(req.body);
     
     // Don't return the password in the response
     const { password, ...newStudent } = student.toObject();
     
+    logger.info('Student created successfully', { studentId: student._id });
     res.status(201).json(newStudent);
   } catch (error: any) {
     if (error.code === 11000) {
-      res.status(400).json({ message: 'Email already exists' });
+      next(new ConflictError('Email already exists'));
       return;
     }
-    res.status(500).json({ message: error.message });
+    next(error);
   }
 };
 
-export const getStudents = async (req: Request, res: Response) => {
+export const getStudents = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
     const search = req.query.search as string;
+
+    logger.info('Fetching students list', { page, limit, search });
 
     const query = search
       ? { $text: { $search: search } }
@@ -40,66 +52,76 @@ export const getStudents = async (req: Request, res: Response) => {
 
     const total = await Student.countDocuments(query);
 
+    logger.debug('Students retrieved successfully', { 
+      count: students.length, 
+      total, 
+      page 
+    });
+
     res.json({
       students,
       page,
       totalPages: Math.ceil(total / limit),
       total
     });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getStudent = async (req: Request, res: Response) => {
+export const getStudent = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const studentId = req.params.id;
+    logger.info('Fetching student details', { studentId });
     
     // Check if the user is a student trying to access another student's data
     if (req.user?.role === 'student' && req.user.id !== studentId) {
-      res.status(403).json({ message: 'Access denied. You can only view your own profile.' });
-      return;
+      throw new AuthorizationError('Access denied. You can only view your own profile.');
     }
     
     const student = await Student.findById(studentId)
       .select('-profileImage -password');
     
     if (!student) {
-      res.status(404).json({ message: 'Student not found' });
-      return;
+      throw new NotFoundError('Student not found');
     }
     
+    logger.debug('Student details retrieved successfully', { studentId });
     res.json(student);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 export const updateStudent = async (
   req: Request<{ id: string }, {}, UpdateStudentInput>,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
     const studentId = req.params.id;
+    logger.info('Processing student update', { studentId });
     
     // Check if the user is a student trying to update another student's data
     if (req.user?.role === 'student' && req.user.id !== studentId) {
-      res.status(403).json({ message: 'Access denied. You can only update your own profile.' });
-      return;
+      throw new AuthorizationError('Access denied. You can only update your own profile.');
     }
     
     const student = await Student.findById(studentId).select('+password');
     if (!student) {
-      res.status(404).json({ message: 'Student not found' });
-      return;
+      throw new NotFoundError('Student not found');
     }
 
     // Check if email is being changed and if it's already in use
     if (req.body.email && req.body.email !== student.email) {
+      logger.debug('Checking email availability', { email: req.body.email });
       const emailExists = await Student.findOne({ email: req.body.email });
       if (emailExists) {
-        res.status(400).json({ message: 'Email already in use' });
-        return;
+        throw new ConflictError('Email already in use');
       }
     }
 
@@ -117,53 +139,66 @@ export const updateStudent = async (
     // Don't return the password in the response
     const { password: _, ...updatedStudent } = student.toObject();
 
+    logger.info('Student updated successfully', { studentId });
     res.json(updatedStudent);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const deleteStudent = async (req: Request, res: Response) => {
+export const deleteStudent = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
+    const studentId = req.params.id;
+    logger.info('Processing student deletion', { studentId });
+
     const student = await Student.findByIdAndDelete(req.params.id);
     if (!student) {
-      res.status(404).json({ message: 'Student not found' });
-      return;
+      throw new NotFoundError('Student not found');
     }
     
+    logger.info('Student deleted successfully', { studentId });
     res.json({ message: 'Student deleted successfully' });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
 export const uploadProfileImage = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ) => {
   try {
+    const studentId = req.params.id;
+    logger.info('Processing student profile image upload', { studentId });
+
     if (!req.file) {
-      res.status(400).json({ message: 'No file uploaded' });
-      return;
+      throw new ValidationError('No file uploaded');
     }
 
-    const studentId = req.params.id;
-    
     // Check if the user is a student trying to update another student's profile image
     if (req.user?.role === 'student' && req.user.id !== studentId) {
-      res.status(403).json({ message: 'Access denied. You can only update your own profile image.' });
-      return;
+      throw new AuthorizationError('Access denied. You can only update your own profile image.');
     }
 
     const student = await Student.findById(studentId);
     if (!student) {
-      res.status(404).json({ message: 'Student not found' });
-      return;
+      throw new NotFoundError('Student not found');
     }
 
     // Update profile image
     student.profileImage = req.file.buffer;
     await student.save();
+
+    logger.info('Student profile image updated successfully', { 
+      studentId,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype
+    });
 
     res.json({ 
       message: 'Profile image updated successfully',
@@ -172,28 +207,31 @@ export const uploadProfileImage = async (
         size: req.file.size
       }
     });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const getProfileImage = async (req: Request, res: Response) => {
+export const getProfileImage = async (
+  req: Request, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const studentId = req.params.id;
-    
-    // Students can view any profile image, no need for access control here
+    logger.info('Fetching student profile image', { studentId });
     
     const student = await Student.findById(studentId)
       .select('profileImage');
     
     if (!student || !student.profileImage) {
-      res.status(404).json({ message: 'Profile image not found' });
-      return;
+      throw new NotFoundError('Profile image not found');
     }
 
+    logger.debug('Student profile image retrieved successfully', { studentId });
     res.set('Content-Type', 'image/jpeg');
     res.send(student.profileImage);
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 }; 

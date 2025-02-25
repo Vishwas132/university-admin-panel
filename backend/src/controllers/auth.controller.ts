@@ -1,20 +1,26 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import Admin, { IAdmin } from '../models/Admin.js';
 import Student, { IStudent } from '../models/Student.js';
 import { generateToken } from '../utils/jwt.js';
 import { sendPasswordResetEmail } from '../utils/email.js';
 import crypto from 'crypto';
 import { ForgotPasswordInput, ResetPasswordInput, RegisterInput, LoginInput, StudentLoginInput } from '../schemas/auth.schema.js';
+import { AuthenticationError, ConflictError, NotFoundError } from '../utils/errors.js';
+import { logger } from '../utils/logger.js';
 
-export const register = async (req: Request<{}, {}, RegisterInput>, res: Response) => {
+export const register = async (
+  req: Request<{}, {}, RegisterInput>, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const { name, email, password } = req.body;
+    logger.info('Processing admin registration', { email });
 
     // Check if admin already exists
     const adminExists = await Admin.findOne({ email });
     if (adminExists) {
-      res.status(400).json({ message: 'Admin already exists' });
-      return;
+      throw new ConflictError('Admin already exists');
     }
 
     // Create new admin
@@ -25,6 +31,7 @@ export const register = async (req: Request<{}, {}, RegisterInput>, res: Respons
     });
 
     const token = generateToken(admin);
+    logger.info('Admin registered successfully', { adminId: admin._id });
 
     res.status(201).json({
       _id: admin._id,
@@ -32,27 +39,30 @@ export const register = async (req: Request<{}, {}, RegisterInput>, res: Respons
       email: admin.email,
       token
     });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const login = async (req: Request<{}, {}, LoginInput>, res: Response) => {
+export const login = async (
+  req: Request<{}, {}, LoginInput>, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const { email, password } = req.body;
+    logger.info('Processing admin login attempt', { email });
 
     // Find admin
     const admin = await Admin.findOne({ email });
     if (!admin) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
+      throw new AuthenticationError('Invalid credentials');
     }
 
     // Verify password
     const isMatch = await admin.comparePassword(password);
     if (!isMatch) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
+      throw new AuthenticationError('Invalid credentials');
     }
 
     // Update last login
@@ -60,6 +70,7 @@ export const login = async (req: Request<{}, {}, LoginInput>, res: Response) => 
     await admin.save();
 
     const token = generateToken(admin);
+    logger.info('Admin logged in successfully', { adminId: admin._id });
 
     res.json({
       _id: admin._id,
@@ -67,19 +78,23 @@ export const login = async (req: Request<{}, {}, LoginInput>, res: Response) => 
       email: admin.email,
       token
     });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const forgotPassword = async (req: Request<{}, {}, ForgotPasswordInput>, res: Response) => {
+export const forgotPassword = async (
+  req: Request<{}, {}, ForgotPasswordInput>, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const { email } = req.body;
+    logger.info('Processing forgot password request', { email });
 
     const admin = await Admin.findOne({ email });
     if (!admin) {
-      res.status(404).json({ message: 'Admin not found' });
-      return;
+      throw new NotFoundError('Admin not found');
     }
 
     // Generate reset token
@@ -87,20 +102,26 @@ export const forgotPassword = async (req: Request<{}, {}, ForgotPasswordInput>, 
     
     // Send reset email
     await sendPasswordResetEmail(email, resetToken);
+    logger.info('Password reset email sent', { adminId: admin._id });
 
     res.json({ 
       message: 'Password reset instructions sent to email',
       // Don't send the token in production
       debug: process.env.NODE_ENV === 'development' ? resetToken : undefined
     });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const resetPassword = async (req: Request<{}, {}, ResetPasswordInput>, res: Response) => {
+export const resetPassword = async (
+  req: Request<{}, {}, ResetPasswordInput>, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const { token, password } = req.body;
+    logger.info('Processing password reset request');
 
     // Hash token to compare with stored hash
     const resetPasswordToken = crypto
@@ -114,10 +135,7 @@ export const resetPassword = async (req: Request<{}, {}, ResetPasswordInput>, re
     });
 
     if (!admin) {
-      res.status(400).json({ 
-        message: 'Invalid or expired reset token' 
-      });
-      return;
+      throw new AuthenticationError('Invalid or expired reset token');
     }
 
     // Update password and clear reset token fields
@@ -126,31 +144,36 @@ export const resetPassword = async (req: Request<{}, {}, ResetPasswordInput>, re
     admin.resetPasswordExpires = undefined;
     await admin.save();
 
+    logger.info('Password reset successful', { adminId: admin._id });
     res.json({ message: 'Password reset successful' });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 };
 
-export const studentLogin = async (req: Request<{}, {}, StudentLoginInput>, res: Response) => {
+export const studentLogin = async (
+  req: Request<{}, {}, StudentLoginInput>, 
+  res: Response, 
+  next: NextFunction
+) => {
   try {
     const { email, password } = req.body;
+    logger.info('Processing student login attempt', { email });
 
     // Find student with password field
     const student = await Student.findOne({ email }).select('+password');
     if (!student) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
+      throw new AuthenticationError('Invalid credentials');
     }
 
     // Verify password
     const isMatch = await student.comparePassword(password);
     if (!isMatch) {
-      res.status(401).json({ message: 'Invalid credentials' });
-      return;
+      throw new AuthenticationError('Invalid credentials');
     }
 
     const token = generateToken(student);
+    logger.info('Student logged in successfully', { studentId: student._id });
 
     res.json({
       _id: student._id,
@@ -159,7 +182,7 @@ export const studentLogin = async (req: Request<{}, {}, StudentLoginInput>, res:
       role: 'student',
       token
     });
-  } catch (error: any) {
-    res.status(500).json({ message: error.message });
+  } catch (error) {
+    next(error);
   }
 }; 
