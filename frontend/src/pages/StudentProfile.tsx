@@ -28,15 +28,23 @@ import { axiosInstance } from '../lib/axios';
 import { getErrorMessage } from '../lib/utils';
 import { useState } from 'react';
 
+const phoneRegex = /^\+?[\d\s-]{8,}$/;
+
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string().regex(phoneRegex, 'Invalid phone number format. Must be at least 8 digits and may include +, spaces, and hyphens.').optional(),
 });
 
 const passwordSchema = z.object({
   currentPassword: z.string().min(6, 'Password must be at least 6 characters'),
-  newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+  newPassword: z.string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(50, 'Password is too long')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
   confirmPassword: z.string(),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match",

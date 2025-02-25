@@ -24,13 +24,21 @@ import { useState, useEffect } from 'react';
 import { Visibility, VisibilityOff } from '@mui/icons-material';
 
 
+const phoneRegex = /^\+?[\d\s-]{8,}$/;
+
 const studentSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
-  phoneNumber: z.string().min(10, 'Invalid phone number'),
+  phoneNumber: z.string().regex(phoneRegex, 'Invalid phone number format. Must be at least 8 digits and may include +, spaces, and hyphens.'),
   gender: z.enum(['male', 'female', 'other']),
   qualifications: z.array(z.string()).min(1, 'At least one qualification is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
+  password: z.string()
+    .min(6, 'Password must be at least 6 characters')
+    .max(50, 'Password is too long')
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number'
+    ),
 });
 
 type StudentFormData = z.infer<typeof studentSchema> & {
@@ -312,4 +320,4 @@ export default function StudentDialog({ open, onClose, student, onSuccess }: Stu
       </form>
     </Dialog>
   );
-} 
+}
