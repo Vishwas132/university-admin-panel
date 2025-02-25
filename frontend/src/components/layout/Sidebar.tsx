@@ -47,7 +47,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
       
       {user?.role === 'admin' && (
         <ListItem disablePadding sx={{ display: 'block' }}>
-          <ListItemButton component={Link} to="/students">
+          <ListItemButton component={Link} to="/dashboard/students">
             <ListItemIcon>{menuItems[1].icon}</ListItemIcon>
             <ListItemText primary={menuItems[1].text} />
           </ListItemButton>

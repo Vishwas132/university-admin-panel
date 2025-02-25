@@ -48,8 +48,7 @@ const studentSchema = new Schema<IStudent>({
   password: {
     type: String,
     required: [true, 'Password is required'],
-    minlength: [6, 'Password must be at least 6 characters'],
-    select: false // Don't return password by default in queries
+    minlength: [6, 'Password must be at least 6 characters']
   },
   profileImage: {
     type: Buffer,

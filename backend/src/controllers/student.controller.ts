@@ -33,7 +33,7 @@ export const getStudents = async (req: Request, res: Response) => {
       : {};
 
     const students = await Student.find(query)
-      .select('-profileImage')
+      .select('-profileImage -password')
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 });
@@ -62,7 +62,7 @@ export const getStudent = async (req: Request, res: Response) => {
     }
     
     const student = await Student.findById(studentId)
-      .select('-profileImage');
+      .select('-profileImage -password');
     
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
