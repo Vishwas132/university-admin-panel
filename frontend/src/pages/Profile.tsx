@@ -9,8 +9,14 @@ import {
   IconButton,
   Divider,
   Alert,
+  InputAdornment,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material';
-import { PhotoCamera } from '@mui/icons-material';
+import { PhotoCamera, Visibility, VisibilityOff } from '@mui/icons-material';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,6 +24,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { axiosInstance } from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
 import { getErrorMessage } from '../lib/utils';
+import { useState } from 'react';
 
 const profileSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -39,6 +46,13 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 export default function Profile() {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
+  const [passwordData, setPasswordData] = useState<PasswordFormData | null>(null);
+  const [updateSuccess, setUpdateSuccess] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
 
   const { data: profile } = useQuery({
     queryKey: ['adminProfile'],
@@ -98,10 +112,22 @@ export default function Profile() {
   };
 
   const handlePasswordUpdate = async (data: PasswordFormData) => {
+    setPasswordData(data);
+    setOpenConfirmDialog(true);
+  };
+
+  const confirmPasswordUpdate = async () => {
+    if (!passwordData) return;
+    
     try {
-      await updatePassword.mutateAsync(data);
+      await updatePassword.mutateAsync(passwordData);
+      setOpenConfirmDialog(false);
+      setUpdateSuccess('Password updated successfully');
+      setTimeout(() => setUpdateSuccess(null), 5000);
     } catch (error) {
-      console.error('Failed to update password:', error);
+      setOpenConfirmDialog(false);
+      setUpdateError(getErrorMessage(error));
+      setTimeout(() => setUpdateError(null), 5000);
     }
   };
 
@@ -139,25 +165,42 @@ export default function Profile() {
                 alt={profile?.name}
                 sx={{ width: 120, height: 120, mb: 2, mx: 'auto' }}
               />
-              <IconButton
-                color="primary"
-                aria-label="upload picture"
-                component="label"
+              <Box
                 sx={{
                   position: 'absolute',
-                  bottom: 0,
+                  top: 0,
+                  left: 0,
                   right: 0,
-                  bgcolor: 'background.paper',
+                  bottom: 0,
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  opacity: 0,
+                  transition: 'opacity 0.3s',
+                  '&:hover': {
+                    opacity: 1,
+                  },
                 }}
               >
-                <input
-                  hidden
-                  accept="image/*"
-                  type="file"
-                  onChange={handleImageUpload}
-                />
-                <PhotoCamera />
-              </IconButton>
+                <IconButton
+                  color="primary"
+                  aria-label="upload picture"
+                  component="label"
+                  sx={{
+                    color: 'white',
+                  }}
+                >
+                  <input
+                    hidden
+                    accept="image/*"
+                    type="file"
+                    onChange={handleImageUpload}
+                  />
+                  <PhotoCamera fontSize="large" />
+                </IconButton>
+              </Box>
             </Box>
             <Typography variant="h6">{profile?.name}</Typography>
             <Typography color="textSecondary">{profile?.email}</Typography>
@@ -169,6 +212,17 @@ export default function Profile() {
 
         <Grid item xs={12} md={8}>
           <Paper sx={{ p: 3 }}>
+            {updateSuccess && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                {updateSuccess}
+              </Alert>
+            )}
+            {updateError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {updateError}
+              </Alert>
+            )}
+            
             <Typography variant="h6" gutterBottom>
               Personal Information
             </Typography>
@@ -214,31 +268,70 @@ export default function Profile() {
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    type="password"
+                    type={showCurrentPassword ? 'text' : 'password'}
                     label="Current Password"
                     {...registerPassword('currentPassword')}
                     error={!!passwordErrors.currentPassword}
                     helperText={passwordErrors.currentPassword?.message}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            edge="end"
+                          >
+                            {showCurrentPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    type="password"
+                    type={showNewPassword ? 'text' : 'password'}
                     label="New Password"
                     {...registerPassword('newPassword')}
                     error={!!passwordErrors.newPassword}
                     helperText={passwordErrors.newPassword?.message}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            edge="end"
+                          >
+                            {showNewPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12}>
                   <TextField
                     fullWidth
-                    type="password"
+                    type={showConfirmPassword ? 'text' : 'password'}
                     label="Confirm New Password"
                     {...registerPassword('confirmPassword')}
                     error={!!passwordErrors.confirmPassword}
                     helperText={passwordErrors.confirmPassword?.message}
+                    InputProps={{
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            aria-label="toggle password visibility"
+                            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            edge="end"
+                          >
+                            {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    }}
                   />
                 </Grid>
                 <Grid item xs={12}>
@@ -255,6 +348,25 @@ export default function Profile() {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* Confirmation Dialog */}
+      <Dialog
+        open={openConfirmDialog}
+        onClose={() => setOpenConfirmDialog(false)}
+      >
+        <DialogTitle>Confirm Password Change</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to change your password? You will need to use the new password for your next login.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenConfirmDialog(false)}>Cancel</Button>
+          <Button onClick={confirmPasswordUpdate} color="primary" autoFocus>
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 } 
