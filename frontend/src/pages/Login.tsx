@@ -33,7 +33,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, isAuthenticated, isLoading } = useAuth();
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState('');
   const [isLoggingIn, setIsLoggingIn] = React.useState(false);
@@ -42,6 +42,8 @@ export default function Login() {
     location.state?.message || null
   );
 
+  const from = location.state?.from?.pathname || '/dashboard';
+
   const {
     register,
     handleSubmit,
@@ -49,6 +51,13 @@ export default function Login() {
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
   });
+
+  // Redirect if already authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && !isLoading) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, isLoading, navigate, from]);
 
   React.useEffect(() => {
     // Clear the message from location state after displaying it
@@ -80,7 +89,8 @@ export default function Login() {
       setError('');
       setIsLoggingIn(true);
       await login(data.email, data.password, isStudent);
-      navigate('/dashboard');
+      // Navigate to the page the user was trying to access, or dashboard if none
+      navigate(from, { replace: true });
     } catch (err) {
       const errorMsg = getErrorMessage(err);
       if (errorMsg.includes('credentials') || errorMsg.includes('password') || errorMsg.includes('email')) {
@@ -98,6 +108,30 @@ export default function Login() {
   const handleToggleUserType = () => {
     setIsStudent(!isStudent);
   };
+
+  // Show loading state while checking authentication
+  if (isLoading) {
+    return (
+      <Container component="main" maxWidth="xs">
+        <Box
+          sx={{
+            minHeight: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      </Container>
+    );
+  }
+
+  // If already authenticated, don't render the login form
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <Container component="main" maxWidth="xs">

@@ -23,27 +23,50 @@ axiosInstance.interceptors.request.use(
   }
 );
 
+// Track if we're currently redirecting to avoid multiple redirects
+let isRedirecting = false;
+
 // Add response interceptor
 axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
-    // Only redirect to login if not trying to refresh the auth and not on login page
+    // Don't handle errors if we're already redirecting
+    if (isRedirecting) {
+      return Promise.reject(error);
+    }
+
+    // Check if the error is due to an expired token or unauthorized access
     if (
       error.response?.status === 401 && 
+      // Don't redirect for auth verification endpoints
       !error.config.url.includes('/admin/profile') &&
       !error.config.url.includes('/students/') &&
       !error.config.url.includes('/auth/admin/login') &&
       !error.config.url.includes('/auth/student/login') &&
+      // Don't redirect if we're already on the login page
       !window.location.pathname.includes('/login')
     ) {
+      isRedirecting = true;
+      
+      // Clear auth data
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       
-      // Use history API instead of window.location for a smoother experience
-      if (window.location.pathname !== '/login') {
+      // Use a timeout to ensure we don't get into a redirect loop
+      setTimeout(() => {
+        // Redirect to login page
         window.location.href = '/login';
-      }
+        isRedirecting = false;
+      }, 100);
     }
+    
+    // For network errors, don't automatically logout the user
+    if (error.message === 'Network Error') {
+      console.warn('Network error occurred. Check your connection.');
+      // Only reject the specific request, don't logout
+      return Promise.reject(error);
+    }
+    
     return Promise.reject(error);
   }
 ); 
