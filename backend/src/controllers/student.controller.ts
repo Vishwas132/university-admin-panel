@@ -217,30 +217,6 @@ export const uploadProfileImage = async (
   }
 };
 
-export const getProfileImage = async (
-  req: Request, 
-  res: Response, 
-  next: NextFunction
-) => {
-  try {
-    const studentId = req.params.id;
-    logger.info('Fetching student profile image', { studentId });
-    
-    const student = await Student.findById(studentId)
-      .select('profileImage');
-    
-    if (!student || !student.profileImage) {
-      throw new NotFoundError('Profile image not found');
-    }
-
-    logger.debug('Student profile image retrieved successfully', { studentId });
-    res.set('Content-Type', 'image/jpeg');
-    res.send(student.profileImage);
-  } catch (error) {
-    next(error);
-  }
-};
-
 export const getProfile = async (
   req: Request, 
   res: Response, 
@@ -379,7 +355,7 @@ export const uploadProfilePicture = async (
   }
 };
 
-export const getProfilePicture = async (
+export const getProfileImage = async (
   req: Request, 
   res: Response, 
   next: NextFunction
@@ -387,9 +363,10 @@ export const getProfilePicture = async (
   try {
     logger.info('Fetching student profile picture', { studentId: req.user.id });
 
-    const student = await Student.findById(req.user.id);
+    const student = await Student.findById(req.user.id).select('+profileImage');
     if (!student || !student.profileImage) {
-      throw new NotFoundError('Profile picture not found');
+      res.status(404).json({ message: 'No profile picture found' });
+      return;
     }
 
     logger.debug('Student profile picture retrieved successfully', { studentId: student._id });

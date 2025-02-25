@@ -45,7 +45,7 @@ const passwordSchema = z.object({
 type ProfileFormData = z.infer<typeof profileSchema>;
 type PasswordFormData = z.infer<typeof passwordSchema>;
 
-export default function Profile() {
+export default function AdminProfile() {
   const queryClient = useQueryClient();
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -69,6 +69,28 @@ export default function Profile() {
     },
     refetchOnWindowFocus: false,
     refetchInterval: 60000, // Refetch every minute
+  });
+
+  const { data: profilePicture } = useQuery({
+    queryKey: ['adminProfilePicture', profile?._id],
+    queryFn: async () => {
+      if (!profile?._id) return null;
+      try {
+        const response = await axiosInstance.get('/admin/profile/picture', {
+          responseType: 'arraybuffer'
+        });
+        const base64 = btoa(
+          new Uint8Array(response.data)
+            .reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        return `data:image/jpeg;base64,${base64}`;
+      } catch (error) {
+        console.error('Failed to load profile picture:', error);
+        return null;
+      }
+    },
+    refetchOnWindowFocus: false,
+    enabled: !!profile?._id,
   });
 
   const {
@@ -186,12 +208,13 @@ export default function Profile() {
 
     try {
       setIsUploading(true);
-      await axiosInstance.put('/admin/profile/picture', formData, {
+      await axiosInstance.post('/admin/profile/picture', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
       queryClient.invalidateQueries({ queryKey: ['adminProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['adminProfilePicture'] });
       setImageUploadSuccess('Your profile picture has been successfully updated and is now visible across the system.');
       setTimeout(() => setImageUploadSuccess(null), 5000);
     } catch (error) {
@@ -253,7 +276,7 @@ export default function Profile() {
             >
               <Tooltip title="Click to change profile picture" arrow placement="top">
                 <Avatar
-                  src={profile?.profilePicture}
+                  src={profilePicture || ''}
                   alt={profile?.name}
                   sx={{ width: 120, height: 120, mb: 2, mx: 'auto' }}
                 />
@@ -509,4 +532,4 @@ export default function Profile() {
       </Dialog>
     </Box>
   );
-} 
+}

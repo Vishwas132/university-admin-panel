@@ -144,9 +144,10 @@ export const getProfilePicture = async (
   try {
     logger.info('Fetching admin profile picture', { adminId: req.user.id });
 
-    const admin = await Admin.findById(req.user.id);
+    const admin = await Admin.findById(req.user.id).select('+profilePicture');
     if (!admin || !admin.profilePicture) {
-      throw new NotFoundError('Profile picture not found');
+      res.status(404).json({ message: 'No profile picture found' });
+      return;
     }
 
     logger.debug('Admin profile picture retrieved successfully', { adminId: admin._id });
@@ -155,4 +156,4 @@ export const getProfilePicture = async (
   } catch (error) {
     next(error);
   }
-}; 
+};

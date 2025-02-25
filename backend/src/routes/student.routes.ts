@@ -10,8 +10,7 @@ import {
   getProfile,
   updateProfile,
   changePassword,
-  uploadProfilePicture,
-  getProfilePicture
+  uploadProfilePicture
 } from '../controllers/student.controller.js';
 import { protect, adminOnly } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
@@ -49,7 +48,7 @@ router.put(
   upload.single('profilePicture'),
   uploadProfilePicture
 );
-router.get('/profile/picture', getProfilePicture);
+router.get('/profile/picture', getProfileImage);
 
 // Routes accessible by both admin and students
 // (Student access is controlled in the controller)
@@ -71,7 +70,5 @@ router.post(
   validate(uploadProfileImageSchema),
   uploadProfileImage
 );
-
-router.get('/:id/profile-image', getProfileImage);
 
 export default router;

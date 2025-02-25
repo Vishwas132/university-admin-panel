@@ -72,6 +72,28 @@ export default function StudentProfile() {
     refetchInterval: 60000, // Refetch every minute
   });
 
+  const { data: profilePicture } = useQuery({
+    queryKey: ['studentProfilePicture', profile?._id],
+    queryFn: async () => {
+      if (!profile?._id) return null;
+      try {
+        const response = await axiosInstance.get('/students/profile/picture', {
+          responseType: 'arraybuffer'
+        });
+        const base64 = btoa(
+          new Uint8Array(response.data)
+            .reduce((data, byte) => data + String.fromCharCode(byte), '')
+        );
+        return `data:image/jpeg;base64,${base64}`;
+      } catch (error) {
+        console.error('Failed to load profile picture:', error);
+        return null;
+      }
+    },
+    refetchOnWindowFocus: false,
+    enabled: !!profile?._id,
+  });
+
   const {
     register: registerProfile,
     handleSubmit: handleProfileSubmit,
@@ -194,6 +216,7 @@ export default function StudentProfile() {
         },
       });
       queryClient.invalidateQueries({ queryKey: ['studentProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['studentProfilePicture'] });
       setImageUploadSuccess('Your profile picture has been successfully updated and is now visible across the system.');
       setTimeout(() => setImageUploadSuccess(null), 5000);
     } catch (error) {
@@ -255,7 +278,7 @@ export default function StudentProfile() {
             >
               <Tooltip title="Click to change profile picture" arrow placement="top">
                 <Avatar
-                  src={`/api/students/profile/picture?${new Date().getTime()}`}
+                  src={profilePicture || ''}
                   alt={profile?.name}
                   sx={{ width: 120, height: 120, mb: 2, mx: 'auto' }}
                 />

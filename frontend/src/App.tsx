@@ -11,7 +11,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import DashboardLayout from './components/layout/DashboardLayout';
 import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
+import AdminProfile from './pages/AdminProfile';
 import StudentProfile from './pages/StudentProfile';
 import Students from './pages/Students';
 
@@ -58,7 +58,7 @@ function App() {
                   element={
                     <ProtectedRoute>
                       {({ user }) => (
-                        user?.role === 'student' ? <StudentProfile /> : <Profile />
+                        user?.role === 'student' ? <StudentProfile /> : <AdminProfile />
                       )}
                     </ProtectedRoute>
                   } 
